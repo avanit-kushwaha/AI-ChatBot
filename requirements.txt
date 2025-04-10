@@ -1,6 +1,5 @@
 streamlit
 transformers
-tensorflow
-nltk
-tf-keras 
 torch
+nltk
+# huggingface_hub   # ← Uncomment if using a token
