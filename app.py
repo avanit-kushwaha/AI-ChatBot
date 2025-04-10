@@ -1,12 +1,12 @@
 import streamlit as st
 import nltk
 from transformers import pipeline
+import torch  # <-- Fix: Import torch
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 
-
+# Load chatbot model
 chatbot = pipeline("text-generation", model="distilgpt2")
-
 
 def healthcare_chatbot(user_input):
     if "symptom" in user_input:
@@ -18,8 +18,6 @@ def healthcare_chatbot(user_input):
     else:
         response = chatbot(user_input, max_length=500, num_return_sequences=1)
         return response[0]['generated_text']
-    
-
 
 def main():
     st.title("Healthcare Assistant Chatbot")
@@ -33,4 +31,5 @@ def main():
             print(response)
         else:
             st.write("Please enter a message to get a response.")
-main()  
+
+main()
