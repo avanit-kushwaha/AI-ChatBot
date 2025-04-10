@@ -1,64 +1,58 @@
 import streamlit as st
-import nltk
 from transformers import pipeline
-import torch
+import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 
-# --- Optional: If using a Hugging Face token ---
-# from huggingface_hub import login
-# login("your_huggingface_token")
+# Download NLTK resources
+nltk.download("punkt")
+nltk.download("stopwords")
 
-# Download NLTK data safely
-def download_nltk_data():
-    try:
-        nltk.data.find('tokenizers/punkt')
-    except LookupError:
-        nltk.download('punkt')
-    try:
-        nltk.data.find('corpora/stopwords')
-    except LookupError:
-        nltk.download('stopwords')
+# Set Streamlit page configuration (MUST BE FIRST)
+st.set_page_config(page_title="Healthcare Assistant", page_icon="🩺")
 
-download_nltk_data()
+# Load the model pipeline
+generator = pipeline("text-generation", model="distilgpt2")
 
-# Load chatbot model with fallback
-@st.cache_resource
-def load_chatbot_model():
-    try:
-        return pipeline("text-generation", model="distilgpt2")
-    except Exception as e:
-        st.warning("⚠️ Falling back to a smaller model due to loading issues.")
-        return pipeline("text-generation", model="sshleifer/tiny-gpt2")
+# Function to clean input text
+def clean_input(text):
+    stop_words = set(stopwords.words("english"))
+    words = word_tokenize(text)
+    filtered_words = [word for word in words if word.lower() not in stop_words]
+    return " ".join(filtered_words)
 
-chatbot = load_chatbot_model()
+# Chatbot response generator
+def get_bot_response(user_input):
+    user_input = user_input.strip()
+    if not user_input:
+        return "Please enter a message."
+    
+    # Predefined responses
+    predefined_responses = {
+        "what are the symptoms of covid": "Common symptoms include fever, dry cough, tiredness, and loss of taste or smell.",
+        "how can i book an appointment": "To book an appointment, please call our helpline or use the online portal.",
+        "what are the side effects of paracetamol": "Common side effects include nausea, rash, and liver issues if overdosed."
+    }
 
-# Chatbot response logic
-def healthcare_chatbot(user_input):
-    user_input_lower = user_input.lower()
-    if "symptom" in user_input_lower:
-        return "Please consult a Doctor for accurate advice."
-    elif "appointment" in user_input_lower:
-        return "Would you like to schedule an appointment with the Doctor?"
-    elif "medication" in user_input_lower or "medicine" in user_input_lower:
-        return "It's important to take prescribed medicines regularly. If you have concerns, consult your doctor."
-    else:
-        response = chatbot(user_input, max_length=100, num_return_sequences=1)
-        return response[0]['generated_text']
+    cleaned = clean_input(user_input.lower())
+
+    for key, response in predefined_responses.items():
+        if key in cleaned:
+            return response
+
+    # Fallback to language model
+    response = generator(user_input, max_length=100, do_sample=True, temperature=0.7)
+    return response[0]['generated_text']
 
 # Streamlit App
 def main():
-    st.set_page_config(page_title="Healthcare Assistant", page_icon="🩺")
     st.title("🩺 Healthcare Assistant Chatbot")
     user_input = st.text_input("How can I assist you today?")
-    
-    if st.button("Submit"):
+
+    if st.button("Send"):
         if user_input:
-            st.write("**User:**", user_input)
-            with st.spinner("Processing your query. Please wait ..."):
-                response = healthcare_chatbot(user_input)
-            st.success("**Healthcare Assistant:**")
-            st.write(response)
+            response = get_bot_response(user_input)
+            st.markdown(f"**Bot:** {response}")
         else:
             st.warning("Please enter a message to get a response.")
 
